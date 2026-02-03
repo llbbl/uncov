@@ -1,5 +1,9 @@
 # uncov
 
+[![CI](https://github.com/llbbl/uncov/actions/workflows/ci.yml/badge.svg)](https://github.com/llbbl/uncov/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/llbbl/uncov/branch/main/graph/badge.svg)](https://codecov.io/gh/llbbl/uncov)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A zero-dependency CLI tool that reports files with low test coverage from Vitest/Istanbul JSON output.
 
 ## Features
