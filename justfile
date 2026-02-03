@@ -62,3 +62,77 @@ changelog:
 # Preview unreleased changes
 changelog-preview:
     git cliff --unreleased
+
+# ============================================================================
+# Version Management
+# ============================================================================
+
+# Show current version
+version:
+    @echo "Current version: $(jq -r '.version' package.json)"
+
+# Bump patch version (0.1.2 → 0.1.3)
+bump-patch:
+    #!/bin/sh
+    set -e
+    CURRENT=$(jq -r '.version' package.json)
+    echo "Current version: $CURRENT"
+    npm version patch --no-git-tag-version >/dev/null
+    NEW=$(jq -r '.version' package.json)
+    echo "New version: $NEW"
+    git add package.json
+    git commit -m "chore(release): bump version to $NEW"
+    git tag "v$NEW"
+    echo ""
+    echo "Created tag v$NEW"
+    echo ""
+    echo "Push with:"
+    echo "  git push origin main --tags"
+
+# Bump minor version (0.1.2 → 0.2.0)
+bump-minor:
+    #!/bin/sh
+    set -e
+    CURRENT=$(jq -r '.version' package.json)
+    echo "Current version: $CURRENT"
+    npm version minor --no-git-tag-version >/dev/null
+    NEW=$(jq -r '.version' package.json)
+    echo "New version: $NEW"
+    git add package.json
+    git commit -m "chore(release): bump version to $NEW"
+    git tag "v$NEW"
+    echo ""
+    echo "Created tag v$NEW"
+    echo ""
+    echo "Push with:"
+    echo "  git push origin main --tags"
+
+# Bump major version (0.1.2 → 1.0.0)
+bump-major:
+    #!/bin/sh
+    set -e
+    CURRENT=$(jq -r '.version' package.json)
+    echo "Current version: $CURRENT"
+    npm version major --no-git-tag-version >/dev/null
+    NEW=$(jq -r '.version' package.json)
+    echo "New version: $NEW"
+    git add package.json
+    git commit -m "chore(release): bump version to $NEW"
+    git tag "v$NEW"
+    echo ""
+    echo "Created tag v$NEW"
+    echo ""
+    echo "Push with:"
+    echo "  git push origin main --tags"
+
+# Release: bump patch, push, and trigger release workflow
+release-patch: bump-patch
+    git push origin main --tags
+
+# Release: bump minor, push, and trigger release workflow
+release-minor: bump-minor
+    git push origin main --tags
+
+# Release: bump major, push, and trigger release workflow
+release-major: bump-major
+    git push origin main --tags

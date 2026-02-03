@@ -1,0 +1,91 @@
+name: Auto Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    name: Auto Tag Patch Release
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Calculate next patch version
+        id: next
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          # Increment patch
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEXT_VERSION"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.next.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.next.outputs.version }} already exists, skipping"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.json version
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          jq '.version = "${{ steps.next.outputs.version }}"' package.json > package.json.tmp
+          mv package.json.tmp package.json
+          cat package.json | head -5
+
+      - name: Commit version bump
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git add package.json
+          git commit -m "chore(release): bump version to ${{ steps.next.outputs.version }}"
+          git push
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git tag "v${{ steps.next.outputs.version }}"
+          git push origin "v${{ steps.next.outputs.version }}"
+          echo "Created tag v${{ steps.next.outputs.version }}"
+
+      - name: Summary
+        run: |
+          if [[ "${{ steps.check_tag.outputs.exists }}" == "true" ]]; then
+            echo "### Skipped - Tag Already Exists" >> $GITHUB_STEP_SUMMARY
+            echo "Tag v${{ steps.next.outputs.version }} already exists." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Auto Release Triggered" >> $GITHUB_STEP_SUMMARY
+            echo "- Previous version: v${{ steps.current.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- New version: v${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The release workflow will now build and publish binaries." >> $GITHUB_STEP_SUMMARY
+          fi
