@@ -8,9 +8,9 @@ import pkg from "../package.json" with { type: "json" };
 import { checkCommand } from "./commands/check";
 import { initCommand } from "./commands/init";
 import { reportCommand } from "./commands/report";
+import { DEFAULT_COVERAGE_PATH } from "./lib/constants";
 
 const VERSION = pkg.version;
-export const DEFAULT_COVERAGE_PATH = "coverage/coverage-summary.json";
 
 const HELP = `
 uncov - Report files with low test coverage

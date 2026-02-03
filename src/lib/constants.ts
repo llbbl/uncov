@@ -3,6 +3,11 @@
  */
 
 /**
+ * Default path to coverage summary file
+ */
+export const DEFAULT_COVERAGE_PATH = "coverage/coverage-summary.json";
+
+/**
  * Vitest/Vite config file names to check (in priority order)
  * Vitest config files are checked first, then Vite config files
  */

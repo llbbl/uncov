@@ -13,7 +13,9 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"build": "bun run scripts/build.ts",
-		"build:local": "bun build --compile --outfile=uncov src/cli.ts"
+		"build:local": "bun build --compile --outfile=uncov src/cli.ts",
+		"test:coverage": "vitest run --coverage",
+		"coverage:low": "uncov"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
