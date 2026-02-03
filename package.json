@@ -1,6 +1,6 @@
 {
   "name": "uncov",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Report files with low test coverage from Vitest/Istanbul output",
   "type": "module",
   "main": "src/cli.ts",
