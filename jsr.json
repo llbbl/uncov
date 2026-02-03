@@ -1,8 +1,8 @@
 {
-  "name": "@logan/uncov",
-  "version": "0.1.0",
-  "exports": "./src/cli.ts",
-  "publish": {
-    "include": ["src/**/*.ts", "package.json", "README.md", "LICENSE"]
-  }
+	"name": "@logan/uncov",
+	"version": "0.1.0",
+	"exports": "./src/cli.ts",
+	"publish": {
+		"include": ["src/**/*.ts", "package.json", "README.md", "LICENSE"]
+	}
 }
