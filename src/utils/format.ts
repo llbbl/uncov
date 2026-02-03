@@ -3,6 +3,7 @@
  */
 
 import type { ParsedFileCoverage } from "../lib/coverage";
+import { type Colors, createColors } from "./colors";
 
 /**
  * Format coverage percentage for display
@@ -22,24 +23,41 @@ export function formatLines(covered: number, total: number): string {
 }
 
 /**
- * Format a single file coverage line
+ * Format a single file coverage line with optional colors
+ * - Red for 0% coverage
+ * - Yellow for low coverage (> 0%)
  */
-export function formatFileLine(file: ParsedFileCoverage): string {
+export function formatFileLine(file: ParsedFileCoverage, colors?: Colors): string {
 	const pct = formatPercent(file.linesPct);
 	const lines = formatLines(file.linesCovered, file.linesTotal);
-	return `${pct}  ${lines}   ${file.path}`;
+	const line = `${pct}  ${lines}   ${file.path}`;
+
+	if (!colors) {
+		return line;
+	}
+
+	// Apply color based on coverage percentage
+	if (file.linesPct === 0) {
+		return colors.red(line);
+	}
+	return colors.yellow(line);
 }
 
 /**
  * Format the complete report output
  */
-export function formatReport(files: ParsedFileCoverage[], threshold: number): string {
+export function formatReport(
+	files: ParsedFileCoverage[],
+	threshold: number,
+	colors?: Colors,
+): string {
 	if (files.length === 0) {
-		return `No files at or below ${threshold}% line coverage.`;
+		const msg = `No files at or below ${threshold}% line coverage.`;
+		return colors ? colors.green(msg) : msg;
 	}
 
 	const header = `Files at or below ${threshold}% line coverage: ${files.length}\n`;
-	const fileLines = files.map((f) => `  ${formatFileLine(f)}`).join("\n");
+	const fileLines = files.map((f) => `  ${formatFileLine(f, colors)}`).join("\n");
 
 	return `${header}\n${fileLines}`;
 }

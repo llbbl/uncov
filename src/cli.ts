@@ -26,6 +26,9 @@ Options:
   --threshold <n>  Coverage threshold percentage (default: 10)
   --fail           Exit 1 if files below threshold
   --json           Output as JSON
+  --no-color       Disable colorized output
+  --verbose, -V    Show debug information
+  --dry-run        Show what would happen without making changes (init only)
   --help, -h       Show this help
   --version, -v    Show version
 `.trim();
@@ -39,6 +42,9 @@ interface ParsedArgs {
 	json: boolean;
 	coveragePath: string;
 	force: boolean;
+	noColor: boolean;
+	verbose: boolean;
+	dryRun: boolean;
 }
 
 function parseCliArgs(args: string[]): ParsedArgs {
@@ -56,6 +62,9 @@ function parseCliArgs(args: string[]): ParsedArgs {
 				default: DEFAULT_COVERAGE_PATH,
 			},
 			force: { type: "boolean", default: false },
+			"no-color": { type: "boolean", default: false },
+			verbose: { type: "boolean", short: "V", default: false },
+			"dry-run": { type: "boolean", default: false },
 		},
 		allowPositionals: true,
 	});
@@ -96,6 +105,9 @@ function parseCliArgs(args: string[]): ParsedArgs {
 		json: values.json ?? false,
 		coveragePath: values["coverage-path"] ?? DEFAULT_COVERAGE_PATH,
 		force: values.force ?? false,
+		noColor: values["no-color"] ?? false,
+		verbose: values.verbose ?? false,
+		dryRun: values["dry-run"] ?? false,
 	};
 }
 
@@ -121,15 +133,23 @@ async function main(): Promise<void> {
 				fail: args.fail,
 				json: args.json,
 				coveragePath: args.coveragePath,
+				noColor: args.noColor,
+				verbose: args.verbose,
 			});
 			break;
 		case "init":
 			exitCode = await initCommand({
 				force: args.force,
+				noColor: args.noColor,
+				verbose: args.verbose,
+				dryRun: args.dryRun,
 			});
 			break;
 		case "check":
-			exitCode = await checkCommand();
+			exitCode = await checkCommand({
+				noColor: args.noColor,
+				verbose: args.verbose,
+			});
 			break;
 	}
 

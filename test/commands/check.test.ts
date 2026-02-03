@@ -306,4 +306,18 @@ export default {
 			expect(output).toContain("vite.config.ts");
 		});
 	});
+
+	describe("with --verbose flag", () => {
+		it("should output debug information to stderr", async () => {
+			process.chdir(TEST_DIR);
+
+			// Create minimal package.json
+			writeFileSync(join(TEST_DIR, "package.json"), JSON.stringify({ name: "test" }));
+
+			await checkCommand({ verbose: true });
+
+			const errorOutput = consoleErrorSpy.mock.calls.flat().join("\n");
+			expect(errorOutput).toContain("[verbose]");
+		});
+	});
 });

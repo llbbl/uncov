@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { initCommand } from "../../src/commands/init";
 
@@ -274,6 +274,124 @@ describe("initCommand", () => {
 
 			const output = consoleLogSpy.mock.calls.flat().join("\n");
 			expect(output).toContain("Detected package manager: yarn");
+		});
+	});
+
+	describe("with --dry-run flag", () => {
+		beforeEach(() => {
+			const packageJson = { name: "test-project", version: "1.0.0" };
+			writeFileSync(join(TEST_DIR, "package.json"), JSON.stringify(packageJson, null, 2));
+		});
+
+		it("should show dry run header message", async () => {
+			process.chdir(TEST_DIR);
+
+			const exitCode = await initCommand({ dryRun: true });
+
+			expect(exitCode).toBe(0);
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Dry run - no files will be modified");
+		});
+
+		it("should show what package manager would be detected", async () => {
+			process.chdir(TEST_DIR);
+			writeFileSync(join(TEST_DIR, "pnpm-lock.yaml"), "");
+
+			await initCommand({ dryRun: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Would detect package manager:");
+			expect(output).toContain("pnpm");
+		});
+
+		it("should show what scripts would be added", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Would add script:");
+			expect(output).toContain("test:coverage");
+			expect(output).toContain("coverage:low");
+		});
+
+		it("should show what config would be created", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Would create:");
+			expect(output).toContain("vitest.config.ts");
+		});
+
+		it("should show what .gitignore changes would be made", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			// Either "Would create .gitignore" or "Would append to .gitignore"
+			expect(output.toLowerCase()).toContain("gitignore");
+			expect(output).toContain("coverage/");
+		});
+
+		it("should not modify package.json in dry-run mode", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const packageJson = JSON.parse(readFileSync(join(TEST_DIR, "package.json"), "utf-8"));
+			expect(packageJson.scripts).toBeUndefined();
+		});
+
+		it("should not create vitest.config.ts in dry-run mode", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const configExists = existsSync(join(TEST_DIR, "vitest.config.ts"));
+			expect(configExists).toBe(false);
+		});
+
+		it("should not create .gitignore in dry-run mode", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const gitignoreExists = existsSync(join(TEST_DIR, ".gitignore"));
+			expect(gitignoreExists).toBe(false);
+		});
+
+		it("should show final instruction to run without --dry-run", async () => {
+			process.chdir(TEST_DIR);
+
+			await initCommand({ dryRun: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Run without --dry-run to apply these changes");
+		});
+
+		it("should show would skip existing vitest config", async () => {
+			process.chdir(TEST_DIR);
+			writeFileSync(join(TEST_DIR, "vitest.config.ts"), "export default {}");
+
+			await initCommand({ dryRun: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Would skip vitest config");
+		});
+
+		it("should show would overwrite with --force flag", async () => {
+			process.chdir(TEST_DIR);
+			writeFileSync(join(TEST_DIR, "vitest.config.ts"), "export default {}");
+
+			await initCommand({ dryRun: true, force: true });
+
+			const output = consoleLogSpy.mock.calls.flat().join("\n");
+			expect(output).toContain("Would overwrite:");
+			expect(output).toContain("vitest.config.ts");
 		});
 	});
 });

@@ -274,4 +274,15 @@ describe("reportCommand", () => {
 			expect(output).toContain("Files at or below 10% line coverage:");
 		});
 	});
+
+	describe("with --verbose flag", () => {
+		it("should output debug information to stderr", async () => {
+			const coveragePath = join(FIXTURES_DIR, "coverage-summary.json");
+
+			await reportCommand({ verbose: true, coveragePath });
+
+			const errorOutput = consoleErrorSpy.mock.calls.flat().join("\n");
+			expect(errorOutput).toContain("[verbose]");
+		});
+	});
 });
