@@ -12,6 +12,14 @@ A zero-dependency CLI tool that reports files with low test coverage from Vitest
 
 ## Installation
 
+### Quick Install (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/llbbl/uncov/main/install.sh | bash
+```
+
+This automatically detects your platform, downloads the latest binary, verifies the checksum, and installs to your PATH.
+
 ### npm / pnpm / bun
 
 ```bash
@@ -27,21 +35,21 @@ bun add -g uncov
 
 ### Download Binary
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/your-username/uncov/releases).
+Download the latest release for your platform from [GitHub Releases](https://github.com/llbbl/uncov/releases).
 
 ```bash
 # macOS (Apple Silicon)
-curl -fsSL https://github.com/your-username/uncov/releases/latest/download/uncov-darwin-arm64 -o uncov
+curl -fsSL https://github.com/llbbl/uncov/releases/latest/download/uncov-darwin-arm64 -o uncov
 chmod +x uncov
 sudo mv uncov /usr/local/bin/
 
 # macOS (Intel)
-curl -fsSL https://github.com/your-username/uncov/releases/latest/download/uncov-darwin-x64 -o uncov
+curl -fsSL https://github.com/llbbl/uncov/releases/latest/download/uncov-darwin-x64 -o uncov
 chmod +x uncov
 sudo mv uncov /usr/local/bin/
 
 # Linux
-curl -fsSL https://github.com/your-username/uncov/releases/latest/download/uncov-linux-x64 -o uncov
+curl -fsSL https://github.com/llbbl/uncov/releases/latest/download/uncov-linux-x64 -o uncov
 chmod +x uncov
 sudo mv uncov /usr/local/bin/
 ```
@@ -49,7 +57,7 @@ sudo mv uncov /usr/local/bin/
 ### Build from Source
 
 ```bash
-git clone https://github.com/your-username/uncov.git
+git clone https://github.com/llbbl/uncov.git
 cd uncov
 bun install
 bun run build:local
@@ -171,12 +179,30 @@ Checks:
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/uncov.git
+git clone https://github.com/llbbl/uncov.git
 cd uncov
 bun install
 ```
 
 ### Commands
+
+Using [Just](https://github.com/casey/just) (recommended):
+
+```bash
+just              # Show available commands
+just install      # Install dependencies
+just dev          # Run CLI locally
+just dev --help   # Run CLI with args
+just test         # Run tests
+just lint         # Lint with Biome
+just lint-fix     # Fix lint issues
+just build        # Build local binary
+just build-all    # Build all platform binaries
+just check        # Run lint + tests
+just clean        # Remove build artifacts
+```
+
+Or using bun directly:
 
 ```bash
 bun run dev           # Run CLI locally
