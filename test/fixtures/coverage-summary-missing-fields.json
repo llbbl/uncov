@@ -1,0 +1,12 @@
+{
+	"total": {
+		"statements": { "total": 100, "covered": 50, "skipped": 0, "pct": 50 },
+		"functions": { "total": 20, "covered": 10, "skipped": 0, "pct": 50 },
+		"branches": { "total": 30, "covered": 15, "skipped": 0, "pct": 50 }
+	},
+	"/project/src/missing-lines.ts": {
+		"statements": { "total": 100, "covered": 50, "skipped": 0, "pct": 50 },
+		"functions": { "total": 20, "covered": 10, "skipped": 0, "pct": 50 },
+		"branches": { "total": 30, "covered": 15, "skipped": 0, "pct": 50 }
+	}
+}

@@ -3,6 +3,8 @@
  * Handles reading and parsing coverage-summary.json from Vitest/Istanbul
  */
 
+import { readJson } from "../utils/fs";
+
 /**
  * Coverage metrics for a single file
  */
@@ -42,11 +44,59 @@ export interface ParsedFileCoverage {
 }
 
 /**
- * Read and parse coverage-summary.json
+ * Type guard to validate a coverage metric object
  */
-export async function parseCoverageSummary(_coveragePath: string): Promise<CoverageSummary | null> {
-	// TODO: Implement file reading and parsing
-	return null;
+function isValidCoverageMetric(obj: unknown): obj is CoverageMetric {
+	if (typeof obj !== "object" || obj === null) return false;
+	const metric = obj as Record<string, unknown>;
+	return (
+		typeof metric.total === "number" &&
+		typeof metric.covered === "number" &&
+		typeof metric.pct === "number"
+	);
+}
+
+/**
+ * Type guard to validate file coverage data (requires at least lines metric)
+ */
+function isValidFileCoverage(obj: unknown): obj is FileCoverage {
+	if (typeof obj !== "object" || obj === null) return false;
+	const coverage = obj as Record<string, unknown>;
+	return isValidCoverageMetric(coverage.lines);
+}
+
+/**
+ * Validate and parse raw coverage data into a CoverageSummary
+ * @throws Error if data structure is invalid
+ */
+export function validateCoverageSummary(data: unknown): CoverageSummary {
+	if (typeof data !== "object" || data === null) {
+		throw new Error("Coverage summary must be an object");
+	}
+
+	const summary = data as Record<string, unknown>;
+
+	if (!isValidFileCoverage(summary.total)) {
+		throw new Error('Coverage summary missing valid "total" field');
+	}
+
+	// Validate each file entry
+	for (const [key, value] of Object.entries(summary)) {
+		if (key !== "total" && !isValidFileCoverage(value)) {
+			throw new Error(`Invalid coverage data for file: ${key}`);
+		}
+	}
+
+	return summary as CoverageSummary;
+}
+
+/**
+ * Read and parse coverage-summary.json with validation
+ * @throws Error if file doesn't exist, JSON is invalid, or coverage data structure is invalid
+ */
+export function parseCoverageSummary(coveragePath: string): CoverageSummary {
+	const data = readJson<unknown>(coveragePath);
+	return validateCoverageSummary(data);
 }
 
 /**

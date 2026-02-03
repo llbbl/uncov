@@ -1,0 +1,26 @@
+{
+	"total": {
+		"lines": { "total": 300, "covered": 0, "skipped": 0, "pct": 0 },
+		"statements": { "total": 315, "covered": 0, "skipped": 0, "pct": 0 },
+		"functions": { "total": 45, "covered": 0, "skipped": 0, "pct": 0 },
+		"branches": { "total": 60, "covered": 0, "skipped": 0, "pct": 0 }
+	},
+	"/project/src/untested-a.ts": {
+		"lines": { "total": 100, "covered": 0, "skipped": 0, "pct": 0 },
+		"statements": { "total": 105, "covered": 0, "skipped": 0, "pct": 0 },
+		"functions": { "total": 15, "covered": 0, "skipped": 0, "pct": 0 },
+		"branches": { "total": 20, "covered": 0, "skipped": 0, "pct": 0 }
+	},
+	"/project/src/untested-b.ts": {
+		"lines": { "total": 100, "covered": 0, "skipped": 0, "pct": 0 },
+		"statements": { "total": 105, "covered": 0, "skipped": 0, "pct": 0 },
+		"functions": { "total": 15, "covered": 0, "skipped": 0, "pct": 0 },
+		"branches": { "total": 20, "covered": 0, "skipped": 0, "pct": 0 }
+	},
+	"/project/src/untested-c.ts": {
+		"lines": { "total": 100, "covered": 0, "skipped": 0, "pct": 0 },
+		"statements": { "total": 105, "covered": 0, "skipped": 0, "pct": 0 },
+		"functions": { "total": 15, "covered": 0, "skipped": 0, "pct": 0 },
+		"branches": { "total": 20, "covered": 0, "skipped": 0, "pct": 0 }
+	}
+}

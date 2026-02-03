@@ -10,33 +10,24 @@ import { initCommand } from "./commands/init";
 import { reportCommand } from "./commands/report";
 
 const VERSION = pkg.version;
+export const DEFAULT_COVERAGE_PATH = "coverage/coverage-summary.json";
 
 const HELP = `
 uncov - Report files with low test coverage
 
-Usage:
-  uncov [options]              Report files below coverage threshold
-  uncov init [options]         Bootstrap coverage configuration
-  uncov check                  Verify coverage setup
+Usage: uncov [command] [options]
+
+Commands:
+  (default)  Report files below coverage threshold
+  init       Bootstrap coverage configuration
+  check      Verify coverage setup
 
 Options:
-  -h, --help                   Show this help message
-  -v, --version                Show version number
-
-Report Options:
-  -t, --threshold <number>     Coverage threshold percentage (default: 10)
-  -f, --fail                   Exit with code 1 if files below threshold
-  -j, --json                   Output as JSON
-  -c, --coverage-path <path>   Path to coverage-summary.json
-
-Init Options:
-  --force                      Overwrite existing configuration
-
-Examples:
-  uncov                        Show files with <=10% coverage
-  uncov --threshold 50         Show files with <=50% coverage
-  uncov --fail --threshold 80  Fail CI if files below 80%
-  uncov init                   Set up coverage in current project
+  --threshold <n>  Coverage threshold percentage (default: 10)
+  --fail           Exit 1 if files below threshold
+  --json           Output as JSON
+  --help, -h       Show this help
+  --version, -v    Show version
 `.trim();
 
 interface ParsedArgs {
@@ -62,7 +53,7 @@ function parseCliArgs(args: string[]): ParsedArgs {
 			"coverage-path": {
 				type: "string",
 				short: "c",
-				default: "coverage/coverage-summary.json",
+				default: DEFAULT_COVERAGE_PATH,
 			},
 			force: { type: "boolean", default: false },
 		},
@@ -103,7 +94,7 @@ function parseCliArgs(args: string[]): ParsedArgs {
 		threshold,
 		fail: values.fail ?? false,
 		json: values.json ?? false,
-		coveragePath: values["coverage-path"] ?? "coverage/coverage-summary.json",
+		coveragePath: values["coverage-path"] ?? DEFAULT_COVERAGE_PATH,
 		force: values.force ?? false,
 	};
 }

@@ -1,0 +1,4 @@
+{ this is not valid JSON at all
+  "total": {
+    malformed content here
+  broken structure
