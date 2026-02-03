@@ -4,7 +4,12 @@
 
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { parseCoverageSummary, validateCoverageSummary } from "../../src/lib/coverage";
+import {
+	filterBelowThreshold,
+	parseCoverageSummary,
+	sortByPercentage,
+	validateCoverageSummary,
+} from "../../src/lib/coverage";
 
 const FIXTURES_DIR = join(import.meta.dir, "..", "fixtures");
 
@@ -174,6 +179,131 @@ describe("coverage utilities", () => {
 
 			expect(result["/project/src/full-coverage.ts"]).toBeDefined();
 			expect(result["/project/src/full-coverage.ts"].lines.pct).toBe(100);
+		});
+	});
+
+	describe("filterBelowThreshold", () => {
+		it("should filter files at or below threshold", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-valid.json"));
+			const result = filterBelowThreshold(summary, 10);
+
+			expect(result).toHaveLength(2);
+			expect(result.find((f) => f.path === "/project/src/uncovered.ts")).toBeDefined();
+			expect(result.find((f) => f.path === "/project/src/low-coverage.ts")).toBeDefined();
+		});
+
+		it("should include files at exact threshold", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-valid.json"));
+			const result = filterBelowThreshold(summary, 10);
+
+			const lowCoverage = result.find((f) => f.path === "/project/src/low-coverage.ts");
+			expect(lowCoverage).toBeDefined();
+			expect(lowCoverage?.linesPct).toBe(10);
+		});
+
+		it("should exclude files above threshold", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-valid.json"));
+			const result = filterBelowThreshold(summary, 10);
+
+			expect(result.find((f) => f.path === "/project/src/partial.ts")).toBeUndefined();
+			expect(result.find((f) => f.path === "/project/src/full-coverage.ts")).toBeUndefined();
+		});
+
+		it("should return empty array for all-covered fixture at threshold 10", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-all-covered.json"));
+			const result = filterBelowThreshold(summary, 10);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it("should return all files for all-zero fixture at any threshold", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-all-zero.json"));
+			const result = filterBelowThreshold(summary, 0);
+
+			expect(result).toHaveLength(3);
+		});
+
+		it("should return all files when threshold is 100", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-valid.json"));
+			const result = filterBelowThreshold(summary, 100);
+
+			expect(result).toHaveLength(4);
+		});
+
+		it("should return empty array for empty fixture", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-empty.json"));
+			const result = filterBelowThreshold(summary, 100);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it("should include correct coverage data in result", () => {
+			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-valid.json"));
+			const result = filterBelowThreshold(summary, 0);
+
+			expect(result).toHaveLength(1);
+			const uncovered = result[0];
+			expect(uncovered?.path).toBe("/project/src/uncovered.ts");
+			expect(uncovered?.linesPct).toBe(0);
+			expect(uncovered?.linesCovered).toBe(0);
+			expect(uncovered?.linesTotal).toBe(100);
+		});
+	});
+
+	describe("sortByPercentage", () => {
+		it("should sort files by coverage percentage ascending", () => {
+			const files = [
+				{ path: "/a.ts", linesPct: 50, linesCovered: 50, linesTotal: 100 },
+				{ path: "/b.ts", linesPct: 10, linesCovered: 10, linesTotal: 100 },
+				{ path: "/c.ts", linesPct: 0, linesCovered: 0, linesTotal: 100 },
+				{ path: "/d.ts", linesPct: 100, linesCovered: 100, linesTotal: 100 },
+			];
+
+			const result = sortByPercentage(files);
+
+			expect(result[0]?.path).toBe("/c.ts");
+			expect(result[1]?.path).toBe("/b.ts");
+			expect(result[2]?.path).toBe("/a.ts");
+			expect(result[3]?.path).toBe("/d.ts");
+		});
+
+		it("should not mutate the original array", () => {
+			const files = [
+				{ path: "/a.ts", linesPct: 50, linesCovered: 50, linesTotal: 100 },
+				{ path: "/b.ts", linesPct: 10, linesCovered: 10, linesTotal: 100 },
+			];
+
+			const result = sortByPercentage(files);
+
+			expect(result).not.toBe(files);
+			expect(files[0]?.path).toBe("/a.ts");
+			expect(files[1]?.path).toBe("/b.ts");
+		});
+
+		it("should handle empty array", () => {
+			const result = sortByPercentage([]);
+			expect(result).toEqual([]);
+		});
+
+		it("should handle single element", () => {
+			const files = [{ path: "/a.ts", linesPct: 50, linesCovered: 50, linesTotal: 100 }];
+			const result = sortByPercentage(files);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.path).toBe("/a.ts");
+		});
+
+		it("should handle files with same percentage", () => {
+			const files = [
+				{ path: "/a.ts", linesPct: 50, linesCovered: 50, linesTotal: 100 },
+				{ path: "/b.ts", linesPct: 50, linesCovered: 25, linesTotal: 50 },
+			];
+
+			const result = sortByPercentage(files);
+
+			expect(result).toHaveLength(2);
+			// Both have 50%, order doesn't matter but they should both be present
+			expect(result.map((f) => f.path).sort()).toEqual(["/a.ts", "/b.ts"]);
 		});
 	});
 });

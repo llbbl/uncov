@@ -101,11 +101,39 @@ export function parseCoverageSummary(coveragePath: string): CoverageSummary {
 
 /**
  * Filter files at or below a coverage threshold
+ * @param summary - Coverage summary data
+ * @param threshold - Maximum coverage percentage to include (inclusive)
+ * @returns Array of files at or below the threshold
  */
-export function filterLowCoverageFiles(
-	_summary: CoverageSummary,
-	_threshold: number,
+export function filterBelowThreshold(
+	summary: CoverageSummary,
+	threshold: number,
 ): ParsedFileCoverage[] {
-	// TODO: Implement filtering logic
-	return [];
+	const result: ParsedFileCoverage[] = [];
+
+	for (const [path, coverage] of Object.entries(summary)) {
+		// Skip the 'total' entry
+		if (path === "total") continue;
+
+		const linesPct = coverage.lines.pct;
+		if (linesPct <= threshold) {
+			result.push({
+				path,
+				linesPct,
+				linesCovered: coverage.lines.covered,
+				linesTotal: coverage.lines.total,
+			});
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Sort files by coverage percentage (ascending - lowest first)
+ * @param files - Array of parsed file coverage data
+ * @returns Sorted array (new array, does not mutate input)
+ */
+export function sortByPercentage(files: ParsedFileCoverage[]): ParsedFileCoverage[] {
+	return [...files].sort((a, b) => a.linesPct - b.linesPct);
 }
