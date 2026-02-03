@@ -54,3 +54,11 @@ check: lint test
 
 # CI workflow (install, lint, test)
 ci: install-frozen lint test
+
+# Generate full changelog
+changelog:
+    git cliff -o CHANGELOG.md
+
+# Preview unreleased changes
+changelog-preview:
+    git cliff --unreleased
