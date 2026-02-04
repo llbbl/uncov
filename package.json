@@ -24,5 +24,9 @@
 		"@types/bun": "^1.2.4"
 	},
 	"keywords": ["coverage", "vitest", "testing", "cli"],
-	"license": "MIT"
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/llbbl/uncov.git"
+	}
 }
