@@ -84,6 +84,7 @@ bump-patch:
     echo "New version: $NEW"
     jq --tab --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
     jq --tab --arg v "$NEW" '.version = $v' jsr.json > jsr.json.tmp && mv jsr.json.tmp jsr.json
+    bun run lint:fix >/dev/null
     git add package.json jsr.json
     git commit -m "chore(release): bump version to $NEW"
     git tag "v$NEW"
@@ -105,6 +106,7 @@ bump-minor:
     echo "New version: $NEW"
     jq --tab --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
     jq --tab --arg v "$NEW" '.version = $v' jsr.json > jsr.json.tmp && mv jsr.json.tmp jsr.json
+    bun run lint:fix >/dev/null
     git add package.json jsr.json
     git commit -m "chore(release): bump version to $NEW"
     git tag "v$NEW"
@@ -125,6 +127,7 @@ bump-major:
     echo "New version: $NEW"
     jq --tab --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
     jq --tab --arg v "$NEW" '.version = $v' jsr.json > jsr.json.tmp && mv jsr.json.tmp jsr.json
+    bun run lint:fix >/dev/null
     git add package.json jsr.json
     git commit -m "chore(release): bump version to $NEW"
     git tag "v$NEW"
