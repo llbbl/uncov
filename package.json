@@ -1,12 +1,13 @@
 {
-	"name": "uncov",
+	"name": "@llbbl/uncov",
 	"version": "0.1.1",
 	"description": "Report files with low test coverage from Vitest/Istanbul output",
 	"type": "module",
-	"main": "src/cli.ts",
+	"main": "./dist/cli.js",
 	"bin": {
-		"uncov": "src/cli.ts"
+		"uncov": "./dist/cli.js"
 	},
+	"files": ["dist"],
 	"scripts": {
 		"dev": "bun run src/cli.ts",
 		"test": "bun test",
@@ -14,6 +15,7 @@
 		"lint:fix": "biome check --write .",
 		"build": "bun run scripts/build.ts",
 		"build:local": "bun build --compile --outfile=uncov src/cli.ts",
+		"build:npm": "bun build src/cli.ts --outdir=dist --target=node",
 		"test:coverage": "vitest run --coverage",
 		"coverage:low": "uncov"
 	},
