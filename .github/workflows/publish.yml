@@ -16,19 +16,16 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install latest npm
+        run: npm install -g npm@latest
 
       - name: Build for npm
         run: bun run build:npm
 
-      - name: Pack
-        run: pnpm pack
-
       - name: Publish to npm
-        run: npm publish $(ls *.tgz) --provenance --access public
+        run: npm publish --provenance --access public
