@@ -77,10 +77,14 @@ bump-patch:
     set -e
     CURRENT=$(jq -r '.version' package.json)
     echo "Current version: $CURRENT"
-    npm version patch --no-git-tag-version >/dev/null
-    NEW=$(jq -r '.version' package.json)
+    MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+    MINOR=$(echo "$CURRENT" | cut -d. -f2)
+    PATCH=$(echo "$CURRENT" | cut -d. -f3)
+    NEW="$MAJOR.$MINOR.$((PATCH + 1))"
     echo "New version: $NEW"
-    git add package.json
+    jq --tab --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+    jq --tab --arg v "$NEW" '.version = $v' jsr.json > jsr.json.tmp && mv jsr.json.tmp jsr.json
+    git add package.json jsr.json
     git commit -m "chore(release): bump version to $NEW"
     git tag "v$NEW"
     echo ""
@@ -95,10 +99,13 @@ bump-minor:
     set -e
     CURRENT=$(jq -r '.version' package.json)
     echo "Current version: $CURRENT"
-    npm version minor --no-git-tag-version >/dev/null
-    NEW=$(jq -r '.version' package.json)
+    MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+    MINOR=$(echo "$CURRENT" | cut -d. -f2)
+    NEW="$MAJOR.$((MINOR + 1)).0"
     echo "New version: $NEW"
-    git add package.json
+    jq --tab --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+    jq --tab --arg v "$NEW" '.version = $v' jsr.json > jsr.json.tmp && mv jsr.json.tmp jsr.json
+    git add package.json jsr.json
     git commit -m "chore(release): bump version to $NEW"
     git tag "v$NEW"
     echo ""
@@ -113,10 +120,12 @@ bump-major:
     set -e
     CURRENT=$(jq -r '.version' package.json)
     echo "Current version: $CURRENT"
-    npm version major --no-git-tag-version >/dev/null
-    NEW=$(jq -r '.version' package.json)
+    MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+    NEW="$((MAJOR + 1)).0.0"
     echo "New version: $NEW"
-    git add package.json
+    jq --tab --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+    jq --tab --arg v "$NEW" '.version = $v' jsr.json > jsr.json.tmp && mv jsr.json.tmp jsr.json
+    git add package.json jsr.json
     git commit -m "chore(release): bump version to $NEW"
     git tag "v$NEW"
     echo ""
