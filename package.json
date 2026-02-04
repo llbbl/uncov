@@ -1,6 +1,6 @@
 {
 	"name": "@llbbl/uncov",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "Report files with low test coverage from Vitest/Istanbul output",
 	"type": "module",
 	"main": "./dist/cli.js",
