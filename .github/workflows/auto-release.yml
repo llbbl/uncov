@@ -1,91 +1,166 @@
 name: Auto Release
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  auto-tag:
-    name: Auto Tag Patch Release
-    # Only run if PR was merged (not just closed)
-    if: github.event.pull_request.merged == true
+  version:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+    outputs:
+      tag: ${{ steps.version.outputs.next }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Just
+        uses: extractions/setup-just@v2
+
+      - name: Determine next version
+        id: version
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest=$latest_tag" >> "$GITHUB_OUTPUT"
+
+          version="${latest_tag#v}"
+          IFS='.' read -r major minor patch <<< "$version"
+
+          commits=$(git log "$latest_tag"..HEAD --pretty=format:"%s" 2>/dev/null || git log --pretty=format:"%s")
+
+          if echo "$commits" | grep -qE "^feat(\(.+\))?!:|^fix(\(.+\))?!:|^refactor(\(.+\))?!:|BREAKING CHANGE"; then
+            major=$((major + 1))
+            minor=0
+            patch=0
+          elif echo "$commits" | grep -qE "^feat(\(.+\))?:"; then
+            minor=$((minor + 1))
+            patch=0
+          else
+            patch=$((patch + 1))
+          fi
+
+          next="v${major}.${minor}.${patch}"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "version=${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
+          echo "Next version: $next (from $latest_tag)"
+
+      - name: Update versions
+        run: |
+          bun install --frozen-lockfile
+          just set-version ${{ steps.version.outputs.version }}
+
+      - name: Verify
+        run: |
+          bun run lint
+          bun test
+
+      - name: Commit and tag
+        env:
+          TAG: ${{ steps.version.outputs.next }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(release): bump version to v$VERSION"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin main --follow-tags
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            os: ubuntu-latest
+            artifact: uncov-linux-x64
+          - target: darwin-arm64
+            os: macos-latest
+            artifact: uncov-darwin-arm64
+          - target: darwin-x64
+            os: macos-latest
+            artifact: uncov-darwin-x64
+          - target: windows-x64
+            os: windows-latest
+            artifact: uncov-windows-x64.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun build --compile --target=bun-${{ matrix.target }} --outfile=dist/${{ matrix.artifact }} ./src/cli.ts
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: [version, build]
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.version.outputs.tag }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-      - name: Get current version
-        id: current
+      - name: Prepare release files
         run: |
-          VERSION=$(jq -r '.version' package.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $VERSION"
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+          chmod +x release/*-linux-* release/*-darwin-* || true
+          ls -la release/
 
-      - name: Calculate next patch version
-        id: next
-        run: |
-          CURRENT="${{ steps.current.outputs.version }}"
-          # Split version into parts
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          # Increment patch
-          NEXT_PATCH=$((PATCH + 1))
-          NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
-          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-          echo "Next version: $NEXT_VERSION"
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        id: changelog
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGELOG.md
 
-      - name: Check if tag already exists
-        id: check_tag
-        run: |
-          if git rev-parse "v${{ steps.next.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Tag v${{ steps.next.outputs.version }} already exists, skipping"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Update package.json version
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          jq '.version = "${{ steps.next.outputs.version }}"' package.json > package.json.tmp
-          mv package.json.tmp package.json
-          cat package.json | head -5
-
-      - name: Commit version bump
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          git add package.json
-          git commit -m "chore(release): bump version to ${{ steps.next.outputs.version }}"
-          git push
-
-      - name: Create and push tag
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          git tag "v${{ steps.next.outputs.version }}"
-          git push origin "v${{ steps.next.outputs.version }}"
-          echo "Created tag v${{ steps.next.outputs.version }}"
-
-      - name: Summary
-        run: |
-          if [[ "${{ steps.check_tag.outputs.exists }}" == "true" ]]; then
-            echo "### Skipped - Tag Already Exists" >> $GITHUB_STEP_SUMMARY
-            echo "Tag v${{ steps.next.outputs.version }} already exists." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### Auto Release Triggered" >> $GITHUB_STEP_SUMMARY
-            echo "- Previous version: v${{ steps.current.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "- New version: v${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The release workflow will now build and publish binaries." >> $GITHUB_STEP_SUMMARY
-          fi
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          files: release/*
+          body: ${{ steps.changelog.outputs.content }}
+          draft: false
+          prerelease: false
