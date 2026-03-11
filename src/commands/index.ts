@@ -2,6 +2,6 @@
  * Command exports
  */
 
-export { reportCommand, type ReportOptions } from "./report";
-export { initCommand, type InitOptions } from "./init";
 export { checkCommand } from "./check";
+export { type InitOptions, initCommand } from "./init";
+export { type ReportOptions, reportCommand } from "./report";

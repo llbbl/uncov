@@ -3,7 +3,7 @@
  */
 
 import type { ParsedFileCoverage } from "../lib/coverage";
-import { type Colors, createColors } from "./colors";
+import type { Colors } from "./colors";
 
 /**
  * Format coverage percentage for display

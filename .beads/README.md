@@ -70,12 +70,46 @@ bd init
 bd create "Try out Beads"
 ```
 
+## Dolt Backend
+
+Beads uses [Dolt](https://www.dolthub.com/) as its database engine. Dolt must be installed for beads to work.
+
+```bash
+# Install Dolt
+brew install dolt
+```
+
+The `.beads/` directory contains:
+- **Dolt database** (the `dolt/` directory)
+- **`issues.jsonl`** — JSONL backup of all issues (portable, used for recovery)
+- **`dolt-server.lock`** — PID file for the Dolt SQL server daemon
+
+### Recovery / Re-importing Issues
+
+If beads stops working (e.g., "no beads database found" after a fresh clone, Dolt reinstall, or corrupted state), re-import from the JSONL backup:
+
+```bash
+# Re-initialize and import all issues from JSONL backup
+bd init --force --prefix <project-prefix> --from-jsonl
+
+# For this project:
+bd init --force --prefix uncov --from-jsonl
+```
+
+This reads `.beads/issues.jsonl` and rebuilds the Dolt database. The `--force` flag is required when `.beads/` already exists.
+
+### Stale Daemon
+
+If you see connection errors, the Dolt server daemon may have a stale PID. Check and kill it:
+
+```bash
+cat .beads/dolt-server.lock   # Shows the PID
+kill <pid>                      # Kill stale process
+bd list                         # Will restart the daemon automatically
+```
+
 ## Learn More
 
 - **Documentation**: [github.com/steveyegge/beads/docs](https://github.com/steveyegge/beads/tree/main/docs)
 - **Quick Start Guide**: Run `bd quickstart`
 - **Examples**: [github.com/steveyegge/beads/examples](https://github.com/steveyegge/beads/tree/main/examples)
-
----
-
-*Beads: Issue tracking that moves at the speed of thought* ⚡

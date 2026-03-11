@@ -7,12 +7,12 @@ import { createColors, isColorSupported } from "../../src/utils/colors";
 
 describe("colors", () => {
 	let originalNoColor: string | undefined;
-	let originalIsTTY: boolean | undefined;
+	let _originalIsTTY: boolean | undefined;
 
 	beforeEach(() => {
 		// Save original values
 		originalNoColor = process.env.NO_COLOR;
-		originalIsTTY = process.stdout.isTTY;
+		_originalIsTTY = process.stdout.isTTY;
 	});
 
 	afterEach(() => {
