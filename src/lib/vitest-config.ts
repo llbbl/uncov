@@ -46,21 +46,51 @@ export function hasCoverageConfig(configPath: string): boolean {
 
 	try {
 		const content = readText(configPath);
+		const stripped = stripCommentsAndStrings(content);
 
 		// Primary check: explicit coverage configuration block
 		// Matches: coverage: { or coverage : {
-		const hasCoverageBlock = /coverage\s*:\s*\{/.test(content);
+		const hasCoverageBlock = /coverage\s*:\s*\{/.test(stripped);
 		if (hasCoverageBlock) {
 			return true;
 		}
 
 		// Secondary check: coverage property assignment
-		// Matches: coverage: someVariable or coverage: true
-		const hasCoverageProperty = /coverage\s*:\s*[a-zA-Z]/.test(content);
+		// Matches: coverage: someVariable, coverage: true, coverage: 'all'
+		// (string literals are reduced to empty quote pairs by the stripper,
+		// so we look for an identifier or a quote char after the colon).
+		const hasCoverageProperty = /coverage\s*:\s*[a-zA-Z'"`]/.test(stripped);
 		return hasCoverageProperty;
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * Strip line comments, block comments, and string literals (single, double,
+ * backtick) from TypeScript/JavaScript source. Used to avoid false positives
+ * when text-matching for coverage configuration.
+ *
+ * Not a full parser - does not handle regex literals containing comment-like
+ * sequences or nested template literal expressions, but is sufficient for
+ * realistic vitest config shapes.
+ */
+function stripCommentsAndStrings(source: string): string {
+	return source.replace(
+		/(\/\*[\s\S]*?\*\/)|(\/\/[^\n]*)|("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])*')|(`(?:\\.|[^`\\])*`)/g,
+		(_match, block, line, dq, sq, tpl) => {
+			// Comments are removed entirely.
+			if (block || line) return "";
+			// String literals are replaced with an empty literal of the same
+			// quote style. This preserves the surrounding syntax (e.g.
+			// `coverage: ''` still looks like a property assignment to a
+			// string value) while erasing any matchable content inside.
+			if (dq) return '""';
+			if (sq) return "''";
+			if (tpl) return "``";
+			return "";
+		},
+	);
 }
 
 /**

@@ -1,16 +1,6 @@
 # Dependencies
 node_modules/
 
-docs/
-.claude/
-.gemini/
-.cursor/
-.agent/
-GEMINI.md
-AGENTS.md
-CLAUDE.md
-
-
 # Build output
 dist/
 uncov
@@ -18,6 +8,24 @@ uncov.exe
 
 # Coverage
 coverage/
+
+# Docs (local only)
+docs/
+
+# Agent / IDE context (per-tool, not shared)
+.claude/
+.gemini/
+.cursor/
+.agent/
+.amp/
+.codex/
+.antigravity/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+
+# Beads (issue tracker, local state)
+.beads/
 
 # IDE
 .idea/

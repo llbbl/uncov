@@ -8,7 +8,7 @@ import { readJson } from "../utils/fs";
 /**
  * Coverage metrics for a single file
  */
-export interface FileCoverage {
+interface FileCoverage {
 	lines: CoverageMetric;
 	statements: CoverageMetric;
 	functions: CoverageMetric;
@@ -18,7 +18,7 @@ export interface FileCoverage {
 /**
  * Individual coverage metric (lines, statements, etc.)
  */
-export interface CoverageMetric {
+interface CoverageMetric {
 	total: number;
 	covered: number;
 	skipped: number;
@@ -114,6 +114,11 @@ export function filterBelowThreshold(
 	for (const [path, coverage] of Object.entries(summary)) {
 		// Skip the 'total' entry
 		if (path === "total") continue;
+
+		// Skip files with no executable lines (e.g., type-only .d.ts re-exports,
+		// empty barrel files). Istanbul reports pct: 0 for these, but they have
+		// nothing to test - including them would be misleading noise.
+		if (coverage.lines.total === 0) continue;
 
 		const linesPct = coverage.lines.pct;
 		if (linesPct <= threshold) {

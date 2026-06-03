@@ -2,7 +2,7 @@
  * Unit tests for configuration management
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -294,8 +294,94 @@ describe("config utilities", () => {
 			const configPath = join(testDir, "uncov.config.json");
 			writeFileSync(configPath, "not valid json");
 
-			const result = loadConfig(undefined, testDir);
-			expect(result).toEqual(DEFAULT_CONFIG);
+			const stderrSpy = spyOn(process.stderr, "write").mockImplementation(() => true);
+			try {
+				const result = loadConfig(undefined, testDir);
+				expect(result).toEqual(DEFAULT_CONFIG);
+				expect(stderrSpy).toHaveBeenCalled();
+				const warning = String(stderrSpy.mock.calls[0]?.[0] ?? "");
+				expect(warning).toContain("[uncov] warning");
+				expect(warning).toContain("uncov.config.json");
+			} finally {
+				stderrSpy.mockRestore();
+			}
+		});
+
+		it("should warn when uncov.config.json is malformed JSON", () => {
+			const configPath = join(testDir, "uncov.config.json");
+			writeFileSync(configPath, "{ broken: json,, }");
+
+			const stderrSpy = spyOn(process.stderr, "write").mockImplementation(() => true);
+			try {
+				const result = loadConfig(undefined, testDir);
+				expect(result).toEqual(DEFAULT_CONFIG);
+				expect(stderrSpy).toHaveBeenCalledTimes(1);
+				const warning = String(stderrSpy.mock.calls[0]?.[0] ?? "");
+				expect(warning).toContain("[uncov] warning");
+				expect(warning).toContain(configPath);
+				expect(warning).toContain("Using defaults");
+			} finally {
+				stderrSpy.mockRestore();
+			}
+		});
+
+		it("should warn when package.json is malformed JSON", () => {
+			const packagePath = join(testDir, "package.json");
+			writeFileSync(packagePath, "{ not valid json");
+
+			const stderrSpy = spyOn(process.stderr, "write").mockImplementation(() => true);
+			try {
+				const result = loadConfig(undefined, testDir);
+				expect(result).toEqual(DEFAULT_CONFIG);
+				expect(stderrSpy).toHaveBeenCalledTimes(1);
+				const warning = String(stderrSpy.mock.calls[0]?.[0] ?? "");
+				expect(warning).toContain("[uncov] warning");
+				expect(warning).toContain("package.json");
+			} finally {
+				stderrSpy.mockRestore();
+			}
+		});
+
+		it("should NOT warn when config files are simply missing", () => {
+			const stderrSpy = spyOn(process.stderr, "write").mockImplementation(() => true);
+			try {
+				const result = loadConfig(undefined, testDir);
+				expect(result).toEqual(DEFAULT_CONFIG);
+				expect(stderrSpy).not.toHaveBeenCalled();
+			} finally {
+				stderrSpy.mockRestore();
+			}
+		});
+	});
+
+	describe("readPackageJsonConfig error handling", () => {
+		it("should warn and return null on malformed package.json", () => {
+			const packagePath = join(testDir, "package.json");
+			writeFileSync(packagePath, "{ invalid json");
+
+			const stderrSpy = spyOn(process.stderr, "write").mockImplementation(() => true);
+			try {
+				const result = readPackageJsonConfig(testDir);
+				expect(result).toBeNull();
+				expect(stderrSpy).toHaveBeenCalledTimes(1);
+				const warning = String(stderrSpy.mock.calls[0]?.[0] ?? "");
+				expect(warning).toContain("[uncov] warning");
+				expect(warning).toContain(packagePath);
+				expect(warning).toContain("Using defaults");
+			} finally {
+				stderrSpy.mockRestore();
+			}
+		});
+
+		it("should NOT warn when package.json is missing", () => {
+			const stderrSpy = spyOn(process.stderr, "write").mockImplementation(() => true);
+			try {
+				const result = readPackageJsonConfig(testDir);
+				expect(result).toBeNull();
+				expect(stderrSpy).not.toHaveBeenCalled();
+			} finally {
+				stderrSpy.mockRestore();
+			}
 		});
 	});
 });

@@ -23,14 +23,16 @@ Commands:
   check      Verify coverage setup
 
 Options:
-  --threshold <n>  Coverage threshold percentage (default: 10)
-  --fail           Exit 1 if files below threshold
-  --json           Output as JSON
-  --no-color       Disable colorized output
-  --verbose, -V    Show debug information
-  --dry-run        Show what would happen without making changes (init only)
-  --help, -h       Show this help
-  --version, -v    Show version
+  --threshold <n>          Coverage threshold percentage (default: 10)
+  --fail                   Exit 1 if files below threshold
+  --json                   Output as JSON
+  --coverage-path, -c <p>  Path to coverage JSON file (report only)
+  --force                  Overwrite existing vitest config (init only)
+  --no-color               Disable colorized output
+  --verbose, -V            Show debug information
+  --dry-run                Show what would happen without making changes (init only)
+  --help, -h               Show this help
+  --version, -v            Show version
 `.trim();
 
 interface ParsedArgs {

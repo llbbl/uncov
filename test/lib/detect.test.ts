@@ -40,6 +40,13 @@ describe("detect utilities", () => {
 			expect(result).toBe("bun");
 		});
 
+		it("should detect bun from bun.lock (Bun 1.2+ text format)", () => {
+			writeFileSync(join(testDir, "bun.lock"), '{ "lockfileVersion": 1 }');
+
+			const result = detectPackageManager(testDir);
+			expect(result).toBe("bun");
+		});
+
 		it("should detect npm from package-lock.json", () => {
 			writeFileSync(join(testDir, "package-lock.json"), "{}");
 
@@ -235,15 +242,15 @@ describe("detect utilities", () => {
 			expect(result.hasCoverage).toBe(true);
 		});
 
-		it("should detect coverage* glob pattern", () => {
+		it("should NOT match coverage* glob pattern (does not ignore coverage/ dir reliably)", () => {
 			writeFileSync(join(testDir, ".gitignore"), "node_modules\ncoverage*\n");
 
 			const result = detectGitignore(testDir);
 			expect(result.exists).toBe(true);
-			expect(result.hasCoverage).toBe(true);
+			expect(result.hasCoverage).toBe(false);
 		});
 
-		it("should detect **/coverage glob pattern", () => {
+		it("should match **/coverage glob pattern (matches root coverage/)", () => {
 			writeFileSync(join(testDir, ".gitignore"), "**/coverage\n");
 
 			const result = detectGitignore(testDir);
@@ -251,7 +258,7 @@ describe("detect utilities", () => {
 			expect(result.hasCoverage).toBe(true);
 		});
 
-		it("should detect **/coverage/ glob pattern", () => {
+		it("should match **/coverage/ glob pattern (matches root coverage/)", () => {
 			writeFileSync(join(testDir, ".gitignore"), "**/coverage/\n");
 
 			const result = detectGitignore(testDir);
@@ -259,20 +266,87 @@ describe("detect utilities", () => {
 			expect(result.hasCoverage).toBe(true);
 		});
 
-		it("should detect path/to/coverage pattern", () => {
+		it("should NOT match nested path/to/coverage pattern", () => {
 			writeFileSync(join(testDir, ".gitignore"), "some/path/to/coverage\n");
 
 			const result = detectGitignore(testDir);
 			expect(result.exists).toBe(true);
-			expect(result.hasCoverage).toBe(true);
+			expect(result.hasCoverage).toBe(false);
 		});
 
-		it("should detect path/to/coverage/ pattern with trailing slash", () => {
+		it("should NOT match nested path/coverage/ pattern", () => {
 			writeFileSync(join(testDir, ".gitignore"), "some/path/coverage/\n");
 
 			const result = detectGitignore(testDir);
 			expect(result.exists).toBe(true);
-			expect(result.hasCoverage).toBe(true);
+			expect(result.hasCoverage).toBe(false);
+		});
+
+		describe("strict matching (uncov-q2s)", () => {
+			const accepted = ["coverage", "coverage/", "/coverage", "/coverage/"];
+			for (const entry of accepted) {
+				it(`matches accepted form: ${JSON.stringify(entry)}`, () => {
+					writeFileSync(join(testDir, ".gitignore"), `node_modules\n${entry}\n.env\n`);
+					const result = detectGitignore(testDir);
+					expect(result.hasCoverage).toBe(true);
+				});
+			}
+
+			const rejected = [
+				"coverage-final.json",
+				"coverage-reports/",
+				"coverage_old/",
+				"coveragerc",
+				"coverage.xml",
+			];
+			for (const entry of rejected) {
+				it(`does not match: ${JSON.stringify(entry)}`, () => {
+					writeFileSync(join(testDir, ".gitignore"), `${entry}\n`);
+					const result = detectGitignore(testDir);
+					expect(result.hasCoverage).toBe(false);
+				});
+			}
+
+			it("does not match a commented '# coverage' line", () => {
+				writeFileSync(join(testDir, ".gitignore"), "# coverage\nnode_modules\n");
+				const result = detectGitignore(testDir);
+				expect(result.hasCoverage).toBe(false);
+			});
+
+			it("does not match an inline-commented 'coverage # ...' line", () => {
+				// gitignore doesn't support inline comments — the trailing text
+				// becomes part of the pattern, so this should NOT match.
+				writeFileSync(join(testDir, ".gitignore"), "coverage # ignored\n");
+				const result = detectGitignore(testDir);
+				expect(result.hasCoverage).toBe(false);
+			});
+
+			it("does not match an empty string entry", () => {
+				writeFileSync(join(testDir, ".gitignore"), "\n\n\n");
+				const result = detectGitignore(testDir);
+				expect(result.hasCoverage).toBe(false);
+			});
+
+			it("matches coverage/ with tab indentation", () => {
+				writeFileSync(join(testDir, ".gitignore"), "node_modules\n\tcoverage/\n");
+				const result = detectGitignore(testDir);
+				expect(result.hasCoverage).toBe(true);
+			});
+
+			it("matches coverage with mixed tab+space indentation", () => {
+				writeFileSync(join(testDir, ".gitignore"), " \t coverage \t \n");
+				const result = detectGitignore(testDir);
+				expect(result.hasCoverage).toBe(true);
+			});
+
+			it("matches when other lines have comments above", () => {
+				writeFileSync(
+					join(testDir, ".gitignore"),
+					"# build artifacts\nnode_modules\n\n# test output\ncoverage/\n",
+				);
+				const result = detectGitignore(testDir);
+				expect(result.hasCoverage).toBe(true);
+			});
 		});
 	});
 });
