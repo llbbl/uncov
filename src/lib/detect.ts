@@ -32,6 +32,7 @@ export interface GitignoreResult {
  */
 const LOCKFILE_MAP: Array<{ file: string; manager: PackageManager }> = [
 	{ file: "pnpm-lock.yaml", manager: "pnpm" },
+	{ file: "bun.lock", manager: "bun" },
 	{ file: "bun.lockb", manager: "bun" },
 	{ file: "package-lock.json", manager: "npm" },
 	{ file: "yarn.lock", manager: "yarn" },
@@ -85,21 +86,26 @@ export function detectGitignore(cwd?: string): GitignoreResult {
 		const content = readText(gitignorePath);
 		const lines = content.split("\n").map((line) => line.trim());
 
-		// Check if any line matches coverage patterns
+		// Check if any line actually ignores the `coverage/` directory.
+		// Only accept exact entries (after stripping leading `!` for negation):
+		//   coverage, coverage/, /coverage, /coverage/, **/coverage, **/coverage/
+		// Per gitignore semantics, `**/` matches zero or more path components,
+		// so `**/coverage` and `**/coverage/` also match the root `coverage/` dir.
+		// Reject coverage*, coverage-final.json, coverage-reports/, etc.
 		const hasCoverage = lines.some((line) => {
 			// Skip comments and empty lines
-			if (line.startsWith("#") || line === "") {
+			if (line === "" || line.startsWith("#")) {
 				return false;
 			}
-			// Match common coverage patterns:
-			// - coverage, coverage/, /coverage, /coverage/
-			// - coverage*, **/coverage
-			// - paths ending with /coverage or /coverage/
+			// Strip leading `!` (negation marker) so we examine the underlying pattern
+			const pattern = line.startsWith("!") ? line.slice(1) : line;
 			return (
-				/^[/*]*coverage[/*]*$/.test(line) ||
-				line.startsWith("coverage") ||
-				line.endsWith("/coverage") ||
-				line.endsWith("/coverage/")
+				pattern === "coverage" ||
+				pattern === "coverage/" ||
+				pattern === "/coverage" ||
+				pattern === "/coverage/" ||
+				pattern === "**/coverage" ||
+				pattern === "**/coverage/"
 			);
 		});
 

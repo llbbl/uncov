@@ -237,6 +237,40 @@ describe("coverage utilities", () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it("should exclude files with zero executable lines (type-only/barrel files)", () => {
+			const summary = validateCoverageSummary({
+				total: {
+					lines: { total: 10, covered: 0, skipped: 0, pct: 0 },
+					statements: { total: 10, covered: 0, skipped: 0, pct: 0 },
+					functions: { total: 0, covered: 0, skipped: 0, pct: 0 },
+					branches: { total: 0, covered: 0, skipped: 0, pct: 0 },
+				},
+				"/project/src/types.d.ts": {
+					lines: { total: 0, covered: 0, skipped: 0, pct: 0 },
+					statements: { total: 0, covered: 0, skipped: 0, pct: 0 },
+					functions: { total: 0, covered: 0, skipped: 0, pct: 0 },
+					branches: { total: 0, covered: 0, skipped: 0, pct: 0 },
+				},
+				"/project/src/untested.ts": {
+					lines: { total: 10, covered: 0, skipped: 0, pct: 0 },
+					statements: { total: 10, covered: 0, skipped: 0, pct: 0 },
+					functions: { total: 2, covered: 0, skipped: 0, pct: 0 },
+					branches: { total: 0, covered: 0, skipped: 0, pct: 0 },
+				},
+			});
+
+			const result = filterBelowThreshold(summary, 10);
+
+			// Type-only file (lines.total === 0) is excluded
+			expect(result.find((f) => f.path === "/project/src/types.d.ts")).toBeUndefined();
+			// Real 0% file (lines.total === 10) is still included
+			const untested = result.find((f) => f.path === "/project/src/untested.ts");
+			expect(untested).toBeDefined();
+			expect(untested?.linesPct).toBe(0);
+			expect(untested?.linesTotal).toBe(10);
+			expect(result).toHaveLength(1);
+		});
+
 		it("should include correct coverage data in result", () => {
 			const summary = parseCoverageSummary(join(FIXTURES_DIR, "coverage-summary-valid.json"));
 			const result = filterBelowThreshold(summary, 0);

@@ -52,6 +52,8 @@ describe("CLI", () => {
 		expect(output).toContain("uncov - Report files with low test coverage");
 		expect(output).toContain("--threshold");
 		expect(output).toContain("--fail");
+		expect(output).toContain("--coverage-path");
+		expect(output).toContain("--force");
 	});
 
 	it("should run report command with coverage file", async () => {

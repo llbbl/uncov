@@ -211,6 +211,103 @@ export default defineConfig({
 			expect(result).toBe(false);
 		});
 
+		it("should ignore coverage: { ... } inside a line comment", () => {
+			const configPath = join(testDir, "vitest.config.ts");
+			writeFileSync(
+				configPath,
+				`import { defineConfig } from 'vitest/config';
+
+// coverage: { provider: 'v8' }
+export default defineConfig({
+  test: {
+    globals: true,
+  },
+});
+`,
+			);
+
+			const result = hasCoverageConfig(configPath);
+			expect(result).toBe(false);
+		});
+
+		it("should ignore coverage: mentioned inside a string literal", () => {
+			const configPath = join(testDir, "vitest.config.ts");
+			writeFileSync(
+				configPath,
+				`import { defineConfig } from 'vitest/config';
+
+const docsUrl = "docs https://example.com/coverage: thing";
+
+export default defineConfig({
+  test: {
+    globals: true,
+  },
+});
+`,
+			);
+
+			const result = hasCoverageConfig(configPath);
+			expect(result).toBe(false);
+		});
+
+		it("should ignore coverage: { ... } inside a block comment", () => {
+			const configPath = join(testDir, "vitest.config.ts");
+			writeFileSync(
+				configPath,
+				`import { defineConfig } from 'vitest/config';
+
+/* coverage: { provider: 'v8' } */
+export default defineConfig({
+  test: {
+    globals: true,
+  },
+});
+`,
+			);
+
+			const result = hasCoverageConfig(configPath);
+			expect(result).toBe(false);
+		});
+
+		it("should detect real coverage block alongside coverage in a comment", () => {
+			const configPath = join(testDir, "vitest.config.ts");
+			writeFileSync(
+				configPath,
+				`import { defineConfig } from 'vitest/config';
+
+// configures coverage: as below
+export default defineConfig({
+  test: {
+    coverage: {
+      provider: 'v8',
+    },
+  },
+});
+`,
+			);
+
+			const result = hasCoverageConfig(configPath);
+			expect(result).toBe(true);
+		});
+
+		it("should detect coverage: 'all' string value", () => {
+			const configPath = join(testDir, "vitest.config.ts");
+			writeFileSync(
+				configPath,
+				`import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    coverage: 'all',
+  },
+});
+`,
+			);
+
+			const result = hasCoverageConfig(configPath);
+			expect(result).toBe(true);
+		});
+
 		it("should handle empty config file", () => {
 			const configPath = join(testDir, "vitest.config.ts");
 			writeFileSync(configPath, "");

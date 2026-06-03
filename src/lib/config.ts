@@ -60,9 +60,24 @@ export function readPackageJsonConfig(cwd?: string): Partial<UncovConfig> | null
 			return validatePartialConfig(uncovConfig as Record<string, unknown>);
 		}
 		return null;
-	} catch {
+	} catch (error) {
+		warnConfigError(packagePath, error);
 		return null;
 	}
+}
+
+/**
+ * Write a warning to stderr about a config load failure.
+ * Skips warnings for missing files (ENOENT) since that's the common case.
+ */
+function warnConfigError(path: string, error: unknown): void {
+	// Don't warn on file-not-found; defaults silently apply
+	const code = (error as NodeJS.ErrnoException | null)?.code;
+	if (code === "ENOENT") {
+		return;
+	}
+	const message = error instanceof Error ? error.message : String(error);
+	process.stderr.write(`[uncov] warning: failed to parse ${path}: ${message}. Using defaults.\n`);
 }
 
 /**
@@ -142,8 +157,8 @@ export function loadConfig(cliOverrides?: Partial<UncovConfig>, cwd?: string): U
 		try {
 			const fileConfig = readJson<Record<string, unknown>>(configFilePath);
 			configs.push(validatePartialConfig(fileConfig));
-		} catch {
-			// Ignore invalid config file, use defaults
+		} catch (error) {
+			warnConfigError(configFilePath, error);
 		}
 	}
 
