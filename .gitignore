@@ -13,6 +13,7 @@ coverage/
 docs/
 
 # Agent / IDE context (per-tool, not shared)
+_/
 .claude/
 .gemini/
 .cursor/
