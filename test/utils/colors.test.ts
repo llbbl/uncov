@@ -7,22 +7,32 @@ import { createColors, isColorSupported } from "../../src/utils/colors";
 
 describe("colors", () => {
 	let originalNoColor: string | undefined;
-	let _originalIsTTY: boolean | undefined;
+	let originalIsTTY: PropertyDescriptor | undefined;
 
 	beforeEach(() => {
 		// Save original values
 		originalNoColor = process.env.NO_COLOR;
-		_originalIsTTY = process.stdout.isTTY;
+		originalIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+		delete process.env.NO_COLOR;
+		Object.defineProperty(process.stdout, "isTTY", {
+			configurable: true,
+			value: false,
+			writable: true,
+		});
 	});
 
 	afterEach(() => {
 		// Restore original values
 		if (originalNoColor === undefined) {
-			process.env.NO_COLOR = undefined;
+			delete process.env.NO_COLOR;
 		} else {
 			process.env.NO_COLOR = originalNoColor;
 		}
-		// Note: Cannot restore isTTY as it's read-only, but tests should handle this
+		if (originalIsTTY === undefined) {
+			Reflect.deleteProperty(process.stdout, "isTTY");
+		} else {
+			Object.defineProperty(process.stdout, "isTTY", originalIsTTY);
+		}
 	});
 
 	describe("isColorSupported", () => {
@@ -40,18 +50,19 @@ describe("colors", () => {
 			expect(isColorSupported(false)).toBe(false);
 		});
 
-		it("should respect TTY detection", () => {
-			process.env.NO_COLOR = undefined;
-			// Result depends on whether running in TTY
-			const result = isColorSupported(false);
-			expect(typeof result).toBe("boolean");
+		it("should return false without a TTY", () => {
+			expect(isColorSupported(false)).toBe(false);
+		});
+
+		it("should return true with a TTY and NO_COLOR unset", () => {
+			Object.defineProperty(process.stdout, "isTTY", { value: true });
+			expect(isColorSupported(false)).toBe(true);
 		});
 	});
 
 	describe("createColors", () => {
 		it("should return color functions when enabled", () => {
-			// Force enable by mocking conditions
-			process.env.NO_COLOR = undefined;
+			Object.defineProperty(process.stdout, "isTTY", { value: true });
 
 			// Create colors without noColor flag
 			const colors = createColors(false);
@@ -85,20 +96,15 @@ describe("colors", () => {
 		});
 
 		it("should wrap text with ANSI codes when colors enabled", () => {
-			// Force disable NO_COLOR and simulate TTY
-			process.env.NO_COLOR = undefined;
+			Object.defineProperty(process.stdout, "isTTY", { value: true });
+			const colors = createColors(false);
 
-			// Only test if we're in a TTY environment
-			if (process.stdout.isTTY) {
-				const colors = createColors(false);
-
-				expect(colors.red("test")).toBe("\x1b[31mtest\x1b[0m");
-				expect(colors.green("test")).toBe("\x1b[32mtest\x1b[0m");
-				expect(colors.yellow("test")).toBe("\x1b[33mtest\x1b[0m");
-				expect(colors.cyan("test")).toBe("\x1b[36mtest\x1b[0m");
-				expect(colors.bold("test")).toBe("\x1b[1mtest\x1b[0m");
-				expect(colors.dim("test")).toBe("\x1b[2mtest\x1b[0m");
-			}
+			expect(colors.red("test")).toBe("\x1b[31mtest\x1b[0m");
+			expect(colors.green("test")).toBe("\x1b[32mtest\x1b[0m");
+			expect(colors.yellow("test")).toBe("\x1b[33mtest\x1b[0m");
+			expect(colors.cyan("test")).toBe("\x1b[36mtest\x1b[0m");
+			expect(colors.bold("test")).toBe("\x1b[1mtest\x1b[0m");
+			expect(colors.dim("test")).toBe("\x1b[2mtest\x1b[0m");
 		});
 
 		it("should handle empty strings", () => {
