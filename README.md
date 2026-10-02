@@ -24,6 +24,22 @@ curl -fsSL https://raw.githubusercontent.com/llbbl/uncov/main/install.sh | bash
 
 This automatically detects your platform, downloads the latest binary, verifies the checksum, and installs to your PATH.
 
+### Homebrew
+
+```bash
+brew install llbbl/tap/uncov
+```
+
+To install by short name, run `brew tap llbbl/tap` and
+`brew trust --formula llbbl/tap/uncov` first. Whole-tap trust is also available
+with `brew trust --tap llbbl/tap` and covers all current and future formulas,
+casks, and commands in the shared tap.
+
+If you previously installed from `llbbl/uncov`, see the
+[migration instructions](https://github.com/llbbl/homebrew-tap#migrate-uncov-from-the-old-tap).
+The shared tap checks for releases every six hours after a 24-hour hold;
+Homebrew availability usually follows a release by about 24–30 hours.
+
 ### npm / pnpm / bun
 
 ```bash
