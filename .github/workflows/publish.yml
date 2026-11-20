@@ -16,6 +16,11 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - name: Validate release tag
+        run: |
+          version=$(jq -er '.version' package.json)
+          bun run ./scripts/release-policy.ts publish "$GITHUB_REF_NAME" "$version"
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
