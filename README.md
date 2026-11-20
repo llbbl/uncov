@@ -233,6 +233,26 @@ bun run build:local   # Build local binary
 bun run build         # Build all platform binaries
 ```
 
+### Commit and release rules
+
+Use a Conventional Commit subject for your PR title and the commit that lands
+on `main`. Use `type: description` or `type(scope): description`, such as
+`fix(cli): handle empty input`. Squash PRs using the title as the subject and
+leave the commit body empty.
+
+| Commit type | Release |
+|-------------|---------|
+| `feat` | Minor |
+| `fix`, `perf`, `refactor`, `revert` | Patch |
+| `chore`, `docs`, `test`, `style`, `ci`, `build` | Skip |
+
+Auto Release validates every full commit message since the latest release tag on
+`main`. A malformed message, `!` before the subject colon, or a `BREAKING CHANGE:`
+or `BREAKING-CHANGE:` marker in the body stops the release. If the range contains
+a `feat`, it takes precedence over patch changes. A range containing only skip
+types creates no release. Release and npm publishing accept stable `v0.MINOR.PATCH`
+tags, and the npm tag must match `package.json`.
+
 ### Project Structure
 
 ```
