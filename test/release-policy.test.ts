@@ -16,6 +16,15 @@ function nextTag(...messages: string[]): string | undefined {
 	);
 }
 
+function git(cwd: string, ...args: string[]): string {
+	const result = Bun.spawnSync(
+		["git", "-c", "user.name=Release Test", "-c", "user.email=test@example.invalid", ...args],
+		{ cwd, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" } },
+	);
+	if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+	return result.stdout.toString().trim();
+}
+
 describe("release policy", () => {
 	test("skips an empty range and maintenance-only commits", () => {
 		expect(nextTag()).toBeUndefined();
@@ -82,17 +91,9 @@ test("release CLI uses complete messages after the last tag in a local Git histo
 	const cwd = mkdtempSync(join(tmpdir(), "uncov-release-"));
 	const stdout = spyOn(console, "log").mockImplementation(() => {});
 	const stderr = spyOn(console, "error").mockImplementation(() => {});
-	const git = (...args: string[]) => {
-		const result = Bun.spawnSync(
-			["git", "-c", "user.name=Release Test", "-c", "user.email=test@example.invalid", ...args],
-			{ cwd, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" } },
-		);
-		if (result.exitCode !== 0) throw new Error(result.stderr.toString());
-		return result.stdout.toString().trim();
-	};
 	const commit = (...args: string[]) => {
-		git("-c", "commit.gpgSign=false", "commit", "--allow-empty", ...args);
-		return git("rev-parse", "HEAD");
+		git(cwd, "-c", "commit.gpgSign=false", "commit", "--allow-empty", ...args);
+		return git(cwd, "rev-parse", "HEAD");
 	};
 	const determine = () => {
 		stdout.mockClear();
@@ -104,12 +105,12 @@ test("release CLI uses complete messages after the last tag in a local Git histo
 		expect(determine()).toBe(1);
 		expect(stdout).not.toHaveBeenCalled();
 		expect(stderr).toHaveBeenCalledTimes(1);
-		git("init", "--quiet");
+		git(cwd, "init", "--quiet");
 		commit("-m", "feat: initialize project");
 		expect(determine()).toBe(0);
 		expect(stdout).toHaveBeenCalledWith("v0.1.0");
 		commit("-m", "Legacy subject");
-		git("-c", "tag.gpgSign=false", "tag", "-a", "v0.1.8", "-m", "Release v0.1.8");
+		git(cwd, "-c", "tag.gpgSign=false", "tag", "-a", "v0.1.8", "-m", "Release v0.1.8");
 		commit("-m", "docs: update usage");
 		expect(determine()).toBe(0);
 		expect(stdout).not.toHaveBeenCalled();
@@ -125,6 +126,94 @@ test("release CLI uses complete messages after the last tag in a local Git histo
 		expect(stderr).toHaveBeenCalledWith(
 			`Commit ${breaking}: Breaking change footers are forbidden`,
 		);
+	} finally {
+		stdout.mockRestore();
+		stderr.mockRestore();
+		rmSync(cwd, { recursive: true, force: true });
+	}
+});
+
+const mergeSubject = "Merge pull request #11 from llbbl/ci/release-policy";
+const invalidSubject = "Expected a Conventional Commit subject";
+
+test.each([
+	{
+		name: "skips a maintenance-only merge",
+		branchMessage: "ci(release): enforce commit-based release rules",
+	},
+	{
+		name: "selects a patch for a merged fix",
+		branchMessage: "fix(cli): handle empty input",
+		tag: "v0.0.1",
+	},
+	{
+		name: "selects a minor for a merged feature",
+		branchMessage: "feat(cli): add a flag",
+		tag: "v0.1.0",
+	},
+	{
+		name: "classifies a conventional merge subject",
+		branchMessage: "docs: update usage",
+		mergeMessage: "fix(cli): resolve a conflict",
+		tag: "v0.0.1",
+	},
+	{
+		name: "rejects an unrecognized merge subject",
+		branchMessage: "docs: update usage",
+		mergeMessage: "Merge branch topic",
+		error: invalidSubject,
+	},
+	{
+		name: "rejects a malformed underlying commit",
+		branchMessage: "Update usage",
+		error: invalidSubject,
+		underlyingError: true,
+	},
+	{
+		name: "rejects a breaking underlying commit",
+		branchMessage: "fix!: change usage",
+		error: "Breaking change markers are forbidden",
+		underlyingError: true,
+	},
+	{
+		name: "rejects a merge-shaped subject on a single-parent commit",
+		branchMessage: mergeSubject,
+		error: invalidSubject,
+		underlyingError: true,
+	},
+	{
+		name: "rejects a breaking footer on a generated merge",
+		branchMessage: "docs: update usage",
+		mergeMessage: `${mergeSubject}\n\nBREAKING CHANGE: removed API`,
+		error: "Breaking change footers are forbidden",
+	},
+])("release CLI $name", ({ branchMessage, mergeMessage, tag, error, underlyingError }) => {
+	const cwd = mkdtempSync(join(tmpdir(), "uncov-merge-"));
+	const stdout = spyOn(console, "log").mockImplementation(() => {});
+	const stderr = spyOn(console, "error").mockImplementation(() => {});
+	try {
+		git(cwd, "init", "--quiet", "--initial-branch=main");
+		git(cwd, "commit", "--no-gpg-sign", "--allow-empty", "-m", "chore: start history");
+		git(cwd, "switch", "--quiet", "-c", "topic");
+		git(cwd, "commit", "--no-gpg-sign", "--allow-empty", "-m", branchMessage);
+		const topic = git(cwd, "rev-parse", "HEAD");
+		git(cwd, "switch", "--quiet", "main");
+		git(cwd, "merge", "--no-ff", "--no-gpg-sign", "-m", mergeMessage ?? mergeSubject, "topic");
+		const expectedSha = underlyingError ? topic : git(cwd, "rev-parse", "HEAD");
+
+		expect(runReleasePolicy(["next"], cwd)).toBe(error ? 1 : 0);
+		if (error) {
+			expect(stderr).toHaveBeenCalledWith(
+				expect.stringContaining(`Commit ${expectedSha}: ${error}`),
+			);
+		} else {
+			expect(stderr).not.toHaveBeenCalled();
+		}
+		if (tag) {
+			expect(stdout).toHaveBeenCalledWith(tag);
+		} else {
+			expect(stdout).not.toHaveBeenCalled();
+		}
 	} finally {
 		stdout.mockRestore();
 		stderr.mockRestore();
