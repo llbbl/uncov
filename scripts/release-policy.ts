@@ -1,4 +1,5 @@
 type ReleaseBump = "minor" | "patch" | "none";
+type ReleaseCommit = { sha: string; message: string; parentCount?: number };
 
 const bumps = new Map<string, ReleaseBump>([
 	["feat", "minor"],
@@ -30,13 +31,16 @@ export function classifySubject(subject: string): ReleaseBump {
 	return bump;
 }
 
-function classifyMessage(message: string): ReleaseBump {
+function classifyMessage(message: string, parentCount = 0): ReleaseBump {
 	const [subject, separator = ""] = message.split(/\r?\n/, 2);
 	if (/^[ \t]*BREAKING[ -]CHANGE:/m.test(message)) {
 		throw new Error("Breaking change footers are forbidden");
 	}
 	if (separator !== "") {
 		throw new Error("Separate the commit subject and body with a blank line");
+	}
+	if (parentCount === 2 && /^Merge pull request #[1-9]\d* from [^/\s]+\/\S+$/.test(subject)) {
+		return "none";
 	}
 	return classifySubject(subject);
 }
@@ -56,15 +60,12 @@ export function validatePublishTag(tag: string, packageVersion: string): void {
 	}
 }
 
-export function nextReleaseTag(
-	latestTag: string,
-	commits: { sha: string; message: string }[],
-): string | undefined {
+export function nextReleaseTag(latestTag: string, commits: ReleaseCommit[]): string | undefined {
 	const [minor, patch] = parseTag(latestTag);
 	let bump: ReleaseBump = "none";
-	for (const { sha, message } of commits) {
+	for (const { sha, message, parentCount } of commits) {
 		try {
-			const current = classifyMessage(message);
+			const current = classifyMessage(message, parentCount);
 			if (current === "minor" || bump === "none") {
 				bump = current;
 			}
@@ -96,10 +97,11 @@ function determineNextTag(cwd: string): string | undefined {
 	).trim();
 	const hasTag = baseline.startsWith("v");
 	const range = hasTag ? `${baseline}..HEAD` : "HEAD";
-	const fields = git(cwd, "log", "-z", "--format=%H%x00%B", range, "--").split("\0");
+	const fields = git(cwd, "log", "-z", "--format=%H%x00%P%x00%B", range, "--").split("\0");
 	const commits = [];
-	for (let index = 0; index + 1 < fields.length; index += 2) {
-		commits.push({ sha: fields[index], message: fields[index + 1] });
+	for (let index = 0; index + 2 < fields.length; index += 3) {
+		const [sha, parents, message] = fields.slice(index, index + 3);
+		commits.push({ sha, message, parentCount: parents ? parents.split(" ").length : 0 });
 	}
 	return nextReleaseTag(hasTag ? baseline : "v0.0.0", commits);
 }

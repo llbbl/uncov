@@ -28,11 +28,11 @@ jobs:
         id: version
         run: |
           next=$(bun run ./scripts/release-policy.ts next)
+          echo "next=$next" >> "$GITHUB_OUTPUT"
           if [[ -z "$next" ]]; then
             echo "No release needed"
             exit 0
           fi
-          echo "next=$next" >> "$GITHUB_OUTPUT"
           echo "version=${next#v}" >> "$GITHUB_OUTPUT"
           echo "Next version: $next"
 
